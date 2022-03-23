@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "chart.fullname" . }}
+  {{- with .Values.podAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: openldap
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  replicas: 1
+  #replicas: {{ .Values.replicas }}
+  template:
+    metadata:
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podAnnotations }}
+      annotations:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      initContainers:
+      - name: take-data-dir-ownership
+        image: alpine:latest
+        command:
+        - chown
+        - -R
+        - 1001:1001
+        - /bitnami/openldap/data
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/openldap/data
+      containers:
+        - name: openldap
+          #image: docker.io/bitnami/openldap:2.6.1
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          env:
+            - name: LDAP_ROOT
+              value: {{ include "ldap.dc" . }}
+            - name: BITNAMI_DEBUG
+              value: "true"
+            - name: LDAP_ADMIN_USERNAME
+              value: "admin"
+            - name: LDAP_ADMIN_PASSWORD
+{{- if .Values.adminPassword.password }}
+              value: "{{ .Values.adminPassword.password }}"
+{{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.adminPassword.existingSecret | default (print "password-" (include "chart.fullname" .) "-admin-from-" .Release.Namespace) }}
+                  key: {{ .Values.adminPassword.existingSecretKey }}
+{{- end }}
+            - name: LDAP_CUSTOM_LDIF_DIR
+              value: "/ldifs"
+            - name: LDAP_CONFIG_ADMIN_ENABLED
+              value: "yes"
+            - name: LDAP_CONFIG_ADMIN_PASSWORD
+{{- if .Values.configAdminPassword.password }}
+              value: "{{ .Values.configAdminPassword.password }}"
+{{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.configAdminPassword.existingSecret | default (print "password-" (include "chart.fullname" .) "-configadmin-from-" .Release.Namespace) }}
+                  key: {{ .Values.configAdminPassword.existingSecretKey }}
+{{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/openldap/
+            - name: ldifs
+              mountPath: /ldifs/
+          ports:
+            - name: tcp-ldap
+              containerPort: 1389
+      volumes:
+        - name: ldifs
+          configMap:
+            name: ldap-ldifs
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
