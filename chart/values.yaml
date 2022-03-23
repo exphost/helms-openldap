@@ -1,0 +1,48 @@
+image:
+  repository: docker.io/bitnami/openldap
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 389
+
+adminPassword:
+  existingSecret: ""
+  password: ""
+  existingSecretKey: "password"
+  generateToNamespaces: []
+configAdminPassword:
+  existingSecret: ""
+  password: ""
+  existingSecretKey: "password"
+  generateToNamespaces: []
+initialDB:
+  ous:
+    - name: users
+    - name: groups
+    - name: sa
+    - name: mails
+  groups:
+    - name: k8s-admins
+      members:
+        - "cn=torgiren,ou=users"
+    - name: argo-admins
+      members:
+        - "cn=torgiren,ou=users"
+  serviceaccounts:
+    - name: dex
+      password: dex123
+    - name: postfix
+#      existingSecret: postfix-secret-password
+#      exsitingSecretKey: pass123
+    - name: redmine
+    - name: userservices
+    
+
+domain: example.com
+podAnnotations: {}

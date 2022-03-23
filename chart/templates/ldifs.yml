@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ldap-ldifs
+data:
+  010_schema.ldif: |
+    version: 1
+    # organization
+    dn: {{ include "ldap.dc" . }}
+    objectClass: dcObject
+    objectClass: organization
+    o: exphost
+
+    # groups/ous
+{{- range .Values.initialDB.ous }}
+    dn: ou={{ .name }},{{ include "ldap.dc" $ }}
+    objectClass: organizationalUnit
+    ou: {{ .name }}
+{{ end }}
+
+    # groups
+{{ range .Values.initialDB.groups }}
+    dn: cn={{ .name }},ou=groups,{{ include "ldap.dc" $ }}
+    objectClass: groupOfNames
+    cn: k8s-admins
+{{-   range .members }} 
+    member: {{ . }},{{ include "ldap.dc" $ }}
+{{-   end }}
+{{ end }}
