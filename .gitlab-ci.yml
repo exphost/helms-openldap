@@ -1,20 +1,12 @@
 stages:
-- nodes
 - deploy
-nodes:
-  stage: nodes
-  image:
-    name: bitnami/kubectl
-  environment:
-    name: dev
-  script:
-    - kubectl get all
+
 deploy:
   stage: deploy
   image:
     name: alpine/helm
   environment: 
-    name: dev
+    name: dev/$CI_COMMIT_REF_SLUG
   script:
   - export VERSION=$(git describe --tags)
   - sed -i "s/__VERSION__/$VERSION/" chart/Chart.yaml
@@ -25,3 +17,7 @@ deploy:
     helm upgrade -n $KUBE_NAMESPACE -i test-openldap chart -f gitlab-ci-values.yml
     --set podAnnotations."app\.gitlab\.com/app"=$CI_PROJECT_PATH_SLUG
     --set podAnnotations."app\.gitlab\.com/env"=$CI_ENVIRONMENT_SLUG
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_COMMIT_BRANCH
