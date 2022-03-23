@@ -30,7 +30,13 @@ delete_app:
     name: alpine/helm
   script:
     - helm uninstall -n $KUBE_NAMESPACE test-openldap
+  variables:
+    GIT_STRATEGY: none
   environment:
     name: dev/$CI_COMMIT_REF_SLUG
     action: stop
   when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_COMMIT_BRANCH
