@@ -1,0 +1,71 @@
+{{- range .Values.initialDB.mails }}
+{{   if not (.password | default .existingSecret | default false) }}
+---
+apiVersion: exphost.pl/v1
+kind: Password
+metadata:
+  name: {{ include "chart.fullname" $ }}-mail-{{ .sn }}-{{ .cn }}
+spec:
+  name: {{ include "chart.fullname" $ }}-mail-{{ .sn }}-{{ .cn }}
+{{   end }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "chart.fullname" $ }}-create-mail-{{ .sn }}-{{ .cn }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: ldap
+        image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+        imagePullPolicy: "{{ $.Values.image.pullPolicy }}"
+        command:
+          - /bin/bash
+          - -c
+          - 'PASSWORD_HASH=$(echo $PASSWORD|openssl passwd -6 -stdin);
+echo -e "
+dn: maildrop={{ .mail }},ou=mails,{{ include "ldap.dc" $ }}\n
+changetype: add\n
+maildrop: {{ .mail }}\n
+objectClass: person\n
+objectClass: postfixUser\n
+objectClass: top\n
+cn: {{ .cn }}\n
+sn: {{ .sn }}\n
+{{- range .mailacceptinggeneralid }}
+mailacceptinggeneralid: {{ . }}\n
+{{- end }}
+userPassword:: $(echo -n {crypt}${PASSWORD_HASH}|base64 -w0)\n
+"|sed -e "s/^ //" >/tmp/ldif.ldif
+            ;
+            cat /tmp/ldif.ldif;
+            ldapmodify -d2 -a -x -H ldap://{{ include "chart.fullname" $ }} -D cn=admin,{{ include "ldap.dc" $ }} -w "$ADMINPASSWORD" -f /tmp/ldif.ldif;
+            ret=$?;
+            echo $ret;
+            exit $ret;
+            '
+        env:
+          - name: PASSWORD
+{{- if .password }}
+            value: "{{ .password }}"
+{{- else }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .existingSecret | default (print "password-" (include "chart.fullname" $) "-sa-" .name "-from-" $.Release.Namespace) }}
+                key: {{ .existingSecretKey | default "password"}}
+{{- end }}
+          - name: ADMINPASSWORD
+{{- if $.Values.adminPassword.password }}
+            value: "{{ $.Values.adminPassword.password }}"
+{{- else }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Values.adminPassword.existingSecret | default (print "password-" (include "chart.fullname" $) "-admin-from-" $.Release.Namespace) }}
+                key: {{ $.Values.adminPassword.existingSecretKey }}
+{{- end }}
+{{ end }}
+

@@ -1,0 +1,60 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "chart.fullname" . }}-mail-redmine-bind-test
+  annotations:
+    "helm.sh/hook": test
+  {{- with .Values.podAnnotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }} 
+spec:
+  containers:
+    - name: openldap
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+      command: ['ldapwhoami',
+                '-H', 'ldap://{{ include "chart.fullname" . }}',
+                '-D', 'maildrop=redmine@example.com,ou=mails,{{ include "ldap.dc" . }}',
+                '-w', 'red123']
+  restartPolicy: Never
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "chart.fullname" . }}-mail-redmine-attributes-test
+  annotations:
+    "helm.sh/hook": test
+  {{- with .Values.podAnnotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }} 
+spec:
+  containers:
+    - name: openldap
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+      command:
+        - bash
+        - -c
+        - > 
+          set -e;
+          ldapsearch 
+          -H ldap://{{ include "chart.fullname" . }}
+          -D cn=admin,{{ include "ldap.dc" . }}
+          -w pass123
+          -b dc=example,dc=com
+          -LLL
+          '(&(maildrop=redmine@example.com)(objectClass=postfixUser))' cn sn mailacceptinggeneralid maildrop |tee /tmp/output.txt;
+          set -x;
+          echo "checking if $(wc -l /tmp/output.txt) == ' 6 /tmp/output.txt'"
+          [ "$(wc -l /tmp/output.txt)" == " 6 /tmp/output.txt" ];
+          echo 'checking grep "maildrop: redmine@example.com" /tmp/output.txt';
+          grep "maildrop: redmine@example.com" /tmp/output.txt ;
+          echo 'checking grep "cn: redmine" /tmp/output.txt;';
+          grep "cn: redmine" /tmp/output.txt;
+          echo 'checking grep "sn: mail" /tmp/output.txt;';
+          grep "sn: mail" /tmp/output.txt;
+          echo 'grep "mailacceptinggeneralid: redmine_alias@example.com" /tmp/output.txt;';
+          grep "mailacceptinggeneralid: redmine_alias@example.com" /tmp/output.txt;
+  restartPolicy: Never
+
