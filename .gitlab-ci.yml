@@ -31,7 +31,7 @@ delete_app:
   image:
     name: alpine/helm
   script:
-    - helm uninstall -n $KUBE_NAMESPACE test-openldap
+    - helm uninstall -n $KUBE_NAMESPACE test-openldap --wait
   variables:
     GIT_STRATEGY: none
   environment:
