@@ -51,6 +51,7 @@ test:
     name: alpine/helm
   environment: 
     name: dev/$CI_COMMIT_REF_SLUG
+    on_stop: delete_app
   variables:
     GIT_STRATEGY: none
   script:
