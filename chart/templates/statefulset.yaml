@@ -84,7 +84,10 @@ spec:
   - metadata:
       name: data
     spec:
+{{- if .Values.persistent.storageClass }}
+      storageClassName: {{ .Values.persistent.storageClass }}
+{{- end }}
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 2Gi
+          storage: {{ .Values.persistent.size }}

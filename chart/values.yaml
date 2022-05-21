@@ -46,3 +46,6 @@ initialDB:
 
 domain: example.com
 podAnnotations: {}
+persistent:
+  size: 2Gi
+  # storageClass: some-class
