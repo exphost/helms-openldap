@@ -22,8 +22,8 @@ data:
 {{ range .Values.initialDB.groups }}
     dn: cn={{ .name }},ou=groups,{{ include "ldap.dc" $ }}
     objectClass: groupOfNames
-    cn: k8s-admins
-{{-   range .members }} 
+    cn: {{ .name }}
+{{-   range .members }}
     member: {{ . }},{{ include "ldap.dc" $ }}
 {{-   end }}
 {{ end }}

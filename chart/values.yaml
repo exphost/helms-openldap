@@ -44,7 +44,6 @@ initialDB:
 #      exsitingSecretKey: pass123
     - name: redmine
     - name: userservices
-    
 
 domain: example.com
 podAnnotations: {}
