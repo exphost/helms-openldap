@@ -37,6 +37,8 @@ initialDB:
   serviceaccounts:
     - name: dex
       password: dex123
+#      copyNamespaces:
+#        - dex
     - name: postfix
 #      existingSecret: postfix-secret-password
 #      exsitingSecretKey: pass123
